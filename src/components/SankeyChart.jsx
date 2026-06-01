@@ -12,7 +12,22 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-export default function SankeyChart({ rows, indication, nodeColors = {}, accentColor = '#7c6ee6' }) {
+const DEFAULT_CONFIG = {
+  showLabels: true,
+  cleanMode: false,
+  nodeBorders: false,
+  flowOpacity: 0.35,
+  nodeThickness: 20,
+  nodePadding: 20,
+  labelFontSize: 12,
+  labelFontFamily: 'Arial',
+  chartHeight: 460,
+  defaultNodeColor: '#7c6ee6',
+};
+
+export default function SankeyChart({ rows, indication, nodeColors = {}, accentColor = '#7c6ee6', config = {} }) {
+  const cfg = { ...DEFAULT_CONFIG, ...config };
+
   const { labels, sources, targets, values, nodeX, nodeY } = useMemo(
     () => buildSankeyData(rows, indication),
     [rows, indication]
@@ -23,11 +38,16 @@ export default function SankeyChart({ rows, indication, nodeColors = {}, accentC
     return rows.filter(r => r[col]).length;
   }, [rows, indication]);
 
-  // Unique drug names for legend (deduplicated across LOTs)
   const uniqueDrugs = useMemo(() => [...new Set(labels)], [labels]);
 
-  const nodeColorList = labels.map(l => nodeColors[l] || accentColor);
-  const linkColors = sources.map(si => hexToRgba(nodeColorList[si], 0.35));
+  const nodeColorList = labels.map(l => nodeColors[l] || cfg.defaultNodeColor);
+  const linkColors = sources.map(si => hexToRgba(nodeColorList[si], cfg.flowOpacity));
+
+  const nodeLineColor = cfg.nodeBorders ? '#333' : '#fff';
+  const nodeLineWidth = cfg.nodeBorders ? 1.5 : 0.5;
+
+  // Clean mode: hide node labels
+  const displayLabels = cfg.showLabels && !cfg.cleanMode ? labels : labels.map(() => '');
 
   return (
     <div style={{ padding: '16px 20px 10px' }}>
@@ -38,14 +58,16 @@ export default function SankeyChart({ rows, indication, nodeColors = {}, accentC
       ) : (
         <>
           {/* LOT column headers */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, paddingLeft: '2%', paddingRight: '2%' }}>
-            {['1st Line', '2nd Line', '3rd Line'].map(l => (
-              <div key={l} style={{
-                background: '#f1f5f9', borderRadius: 6, padding: '3px 14px',
-                fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.3,
-              }}>{l}</div>
-            ))}
-          </div>
+          {!cfg.cleanMode && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, paddingLeft: '2%', paddingRight: '2%' }}>
+              {['1st Line', '2nd Line', '3rd Line'].map(l => (
+                <div key={l} style={{
+                  background: '#f1f5f9', borderRadius: 6, padding: '3px 14px',
+                  fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.3,
+                }}>{l}</div>
+              ))}
+            </div>
+          )}
 
           <Plot
             data={[{
@@ -53,10 +75,10 @@ export default function SankeyChart({ rows, indication, nodeColors = {}, accentC
               orientation: 'h',
               arrangement: 'fixed',
               node: {
-                pad: 20,
-                thickness: 20,
-                line: { color: '#fff', width: 1 },
-                label: labels,
+                pad: cfg.nodePadding,
+                thickness: cfg.nodeThickness,
+                line: { color: nodeLineColor, width: nodeLineWidth },
+                label: displayLabels,
                 color: nodeColorList,
                 x: nodeX,
                 y: nodeY,
@@ -69,27 +91,33 @@ export default function SankeyChart({ rows, indication, nodeColors = {}, accentC
               },
             }]}
             layout={{
-              font: { size: 12, family: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif' },
+              font: {
+                size: cfg.labelFontSize,
+                family: cfg.labelFontFamily,
+              },
               margin: { l: 10, r: 10, t: 5, b: 10 },
-              height: 460,
+              height: cfg.chartHeight,
               paper_bgcolor: 'rgba(0,0,0,0)',
             }}
             style={{ width: '100%' }}
             config={{ responsive: true, displayModeBar: false }}
           />
 
-          {/* Legend — unique drugs only */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginTop: 8, paddingLeft: 4 }}>
-            {uniqueDrugs.map(drug => (
-              <div key={drug} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{
-                  width: 11, height: 11, borderRadius: 3, flexShrink: 0,
-                  background: nodeColors[drug] || accentColor,
-                }} />
-                <span style={{ fontSize: 11, color: '#555' }}>{drug}</span>
-              </div>
-            ))}
-          </div>
+          {/* Legend */}
+          {!cfg.cleanMode && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', marginTop: 8, paddingLeft: 4 }}>
+              {uniqueDrugs.map(drug => (
+                <div key={drug} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{
+                    width: 10, height: 10, borderRadius: 3, flexShrink: 0,
+                    background: nodeColors[drug] || cfg.defaultNodeColor,
+                    border: cfg.nodeBorders ? '1px solid #333' : 'none',
+                  }} />
+                  <span style={{ fontSize: 11, color: '#555', fontFamily: cfg.labelFontFamily }}>{drug}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div style={{ textAlign: 'right', marginTop: 10 }}>
             <span style={{
