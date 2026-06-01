@@ -68,7 +68,7 @@ function pctLOT3(rows, indication) {
   return `${((withL3 / withL1) * 100).toFixed(1)}%`;
 }
 
-export default function UserTab({ rows, indication }) {
+export default function UserTab({ rows, indication, accentColor = '#7c6ee6' }) {
   const [l1, l2, l3] = LOT_COLS[indication];
   const [o1, o2, o3] = OTHER_COLS[indication];
 
@@ -86,7 +86,7 @@ export default function UserTab({ rows, indication }) {
       'Other A1': r[o1] || '',
       'Other A2': r[o2] || '',
       'Other A3': r[o3] || '',
-      ...Object.fromEntries(SEGMENT_COLS.map(s => [s, r[s] || ''])),
+      ...Object.fromEntries(SEGMENT_COLS.map(s => [s, r[s] && r[s] !== 0 && r[s] !== '0' ? r[s] : ''])),
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -94,78 +94,80 @@ export default function UserTab({ rows, indication }) {
     XLSX.writeFile(wb, `UserLevel_${indication}.xlsx`);
   }
 
-  const cellStyle = { padding: '6px 10px', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap', fontSize: 13 };
-  const headerStyle = { ...cellStyle, background: '#f1f5f9', fontWeight: 600, position: 'sticky', top: 0 };
+  const insights = [
+    { label: 'Most common sequence', value: topSequence(rows, indication), icon: '🔗' },
+    { label: 'Most common LOT2 switch', value: topLOT2Switch(rows, indication), icon: '🔄' },
+    { label: '% reached LOT3', value: pctLOT3(rows, indication), icon: '📈' },
+  ];
+
+  const th = { padding: '8px 12px', background: '#f8f9fb', fontWeight: 600, fontSize: 12, color: '#555', borderBottom: '2px solid #eaecf0', whiteSpace: 'nowrap', textAlign: 'left' };
+  const td = { padding: '7px 12px', fontSize: 12, color: '#333', borderBottom: '1px solid #f0f1f3', whiteSpace: 'nowrap' };
 
   return (
-    <div style={{ padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h3 style={{ margin: 0, fontSize: 15 }}>
-          User Level — {INDICATION_LABELS[indication]}
-        </h3>
-        <button
-          onClick={downloadExcel}
-          style={{ padding: '6px 14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer', fontSize: 13 }}
-        >
-          Download as Excel
-        </button>
-      </div>
-
+    <div style={{ padding: 20 }}>
       {/* Insight cards */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-        {[
-          { label: 'Most common sequence', value: topSequence(rows, indication) },
-          { label: 'Most common LOT2 switch', value: topLOT2Switch(rows, indication) },
-          { label: '% reached LOT3', value: pctLOT3(rows, indication) },
-        ].map(card => (
+      <div style={{ display: 'flex', gap: 12, marginBottom: 18 }}>
+        {insights.map(card => (
           <div key={card.label} style={{
-            flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0',
-            borderRadius: 8, padding: '12px 14px',
+            flex: 1, background: `linear-gradient(135deg, ${accentColor}12, ${accentColor}06)`,
+            border: `1px solid ${accentColor}30`, borderRadius: 10, padding: '14px 16px',
           }}>
-            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <div style={{ fontSize: 18, marginBottom: 4 }}>{card.icon}</div>
+            <div style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
               {card.label}
             </div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>{card.value}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e', lineHeight: 1.4 }}>{card.value}</div>
           </div>
         ))}
       </div>
 
+      {/* Download button */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+        <button
+          onClick={downloadExcel}
+          style={{
+            padding: '6px 16px', background: accentColor, color: '#fff',
+            border: 'none', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+          }}
+        >
+          ⬇ Download Excel
+        </button>
+      </div>
+
       {/* Table */}
-      <div style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+      <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #eaecf0' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <thead>
             <tr>
-              {['Id', 'Name', 'Completion Date', 'Time Taken', 'LOT1', 'LOT2', 'LOT3', 'Other A1', 'Other A2', 'Other A3',
-                ...SEGMENT_COLS].map(h => (
-                <th key={h} style={headerStyle}>{h}</th>
+              {['Id', 'Name', 'Completion Date', 'Time Taken', 'LOT1', 'LOT2', 'LOT3',
+                'Other A1', 'Other A2', 'Other A3', ...SEGMENT_COLS].map(h => (
+                <th key={h} style={th}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {displayRows.map((row, i) => (
-              <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
-                <td style={cellStyle}>{row['Id'] || ''}</td>
-                <td style={cellStyle}>{getName(row)}</td>
-                <td style={cellStyle}>{formatDate(row['End Date Users Tz'])}</td>
-                <td style={cellStyle}>{formatTime(row['Time Taken'])}</td>
-                <td style={cellStyle}>{row[l1] || ''}</td>
-                <td style={cellStyle}>{row[l2] || ''}</td>
-                <td style={cellStyle}>{row[l3] || ''}</td>
-                <td style={cellStyle}>{row[o1] || ''}</td>
-                <td style={cellStyle}>{row[o2] || ''}</td>
-                <td style={cellStyle}>{row[o3] || ''}</td>
+              <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                <td style={td}>{row['Id'] || ''}</td>
+                <td style={td}>{getName(row)}</td>
+                <td style={td}>{formatDate(row['End Date Users Tz'])}</td>
+                <td style={td}>{formatTime(row['Time Taken'])}</td>
+                <td style={td}>{row[l1] || ''}</td>
+                <td style={td}>{row[l2] || ''}</td>
+                <td style={td}>{row[l3] || ''}</td>
+                <td style={td}>{row[o1] || ''}</td>
+                <td style={td}>{row[o2] || ''}</td>
+                <td style={td}>{row[o3] || ''}</td>
                 {SEGMENT_COLS.map(s => (
-                  <td key={s} style={cellStyle}>
-                    {row[s] && row[s] !== 0 && row[s] !== '0' ? row[s] : ''}
-                  </td>
+                  <td key={s} style={td}>{row[s] && row[s] !== 0 && row[s] !== '0' ? row[s] : ''}</td>
                 ))}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div style={{ marginTop: 6, fontSize: 12, color: '#94a3b8' }}>
-        {displayRows.length} respondents
+      <div style={{ marginTop: 8, fontSize: 11, color: '#aaa', textAlign: 'right' }}>
+        {displayRows.length} respondents · {INDICATION_LABELS[indication]}
       </div>
     </div>
   );

@@ -4,79 +4,87 @@ import { buildSankeyData } from '../utils/sankeyBuilder';
 
 const INDICATION_LABELS = { EC: 'Endometrial Cancer', OC: 'Ovarian Cancer', CC: 'Cervical Cancer' };
 
-export default function SankeyChart({ rows, indication, onIndicationChange }) {
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+export default function SankeyChart({ rows, indication, nodeColors = {}, accentColor = '#7c6ee6' }) {
   const { labels, sources, targets, values } = useMemo(
     () => buildSankeyData(rows, indication),
     [rows, indication]
   );
 
   const respondentCount = useMemo(() => {
-    const lotCols = {
-      EC: 'Q6_20Z_EC_1L', OC: 'Q6_20Z_OC_1L', CC: 'Q6_20Z_CC_1L',
-    };
-    return rows.filter(r => r[lotCols[indication]]).length;
+    const col = { EC: 'Q6_20Z_EC_1L', OC: 'Q6_20Z_OC_1L', CC: 'Q6_20Z_CC_1L' }[indication];
+    return rows.filter(r => r[col]).length;
   }, [rows, indication]);
 
-  const nodeColors = labels.map(l =>
-    l === 'Product X' ? 'rgba(0,112,192,0.9)' : 'rgba(112,173,71,0.85)'
-  );
-
-  const linkColors = sources.map(si => {
-    const base = nodeColors[si].replace('0.9', '0.35').replace('0.85', '0.35');
-    return base;
-  });
+  const colors = labels.map(l => nodeColors[l] || accentColor);
+  const linkColors = sources.map(si => hexToRgba(colors[si] || accentColor, 0.3));
 
   return (
-    <div style={{ padding: '16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
-        <label style={{ fontWeight: 600 }}>Indication:</label>
-        <select
-          value={indication}
-          onChange={e => onIndicationChange(e.target.value)}
-          style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid #ccc', fontSize: 14 }}
-        >
-          {Object.entries(INDICATION_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v} ({k})</option>
-          ))}
-        </select>
-        <span style={{ color: '#555', fontSize: 13 }}>n = {respondentCount} respondents</span>
-      </div>
-
+    <div style={{ padding: '20px 20px 10px' }}>
       {labels.length === 0 ? (
-        <p style={{ color: '#888', marginTop: 40, textAlign: 'center' }}>
-          No treatment flow data available for {INDICATION_LABELS[indication]}.
-        </p>
+        <div style={{ textAlign: 'center', padding: '80px 0', color: '#bbb', fontSize: 14 }}>
+          No treatment flow data for {INDICATION_LABELS[indication]}.<br />
+          <span style={{ fontSize: 12 }}>Check that the data file has rows for this indication.</span>
+        </div>
       ) : (
-        <Plot
-          data={[{
-            type: 'sankey',
-            orientation: 'h',
-            node: {
-              pad: 20,
-              thickness: 24,
-              line: { color: 'white', width: 0.5 },
-              label: labels,
-              color: nodeColors,
-            },
-            link: {
-              source: sources,
-              target: targets,
-              value: values,
-              color: linkColors,
-            },
-          }]}
-          layout={{
-            title: {
-              text: `Treatment Sequencing — ${INDICATION_LABELS[indication]}`,
-              font: { size: 16 },
-            },
-            font: { size: 12 },
-            margin: { l: 20, r: 20, t: 50, b: 20 },
-            height: 520,
-          }}
-          style={{ width: '100%' }}
-          config={{ responsive: true, displayModeBar: false }}
-        />
+        <>
+          {/* Legend */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            {labels.map(label => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{
+                  width: 12, height: 12, borderRadius: 3,
+                  background: nodeColors[label] || accentColor, flexShrink: 0,
+                }} />
+                <span style={{ fontSize: 11, color: '#555' }}>{label}</span>
+              </div>
+            ))}
+          </div>
+
+          <Plot
+            data={[{
+              type: 'sankey',
+              orientation: 'h',
+              arrangement: 'snap',
+              node: {
+                pad: 18,
+                thickness: 22,
+                line: { color: '#fff', width: 1 },
+                label: labels,
+                color: colors,
+              },
+              link: {
+                source: sources,
+                target: targets,
+                value: values,
+                color: linkColors,
+              },
+            }]}
+            layout={{
+              font: { size: 12, family: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif' },
+              margin: { l: 10, r: 10, t: 10, b: 10 },
+              height: 480,
+              paper_bgcolor: 'rgba(0,0,0,0)',
+            }}
+            style={{ width: '100%' }}
+            config={{ responsive: true, displayModeBar: false }}
+          />
+
+          <div style={{ textAlign: 'right', marginTop: 4 }}>
+            <span style={{
+              background: accentColor + '18', color: accentColor,
+              fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 10,
+            }}>
+              n = {respondentCount} respondents
+            </span>
+          </div>
+        </>
       )}
     </div>
   );
