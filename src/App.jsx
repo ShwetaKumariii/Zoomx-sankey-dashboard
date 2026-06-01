@@ -50,8 +50,9 @@ export default function App() {
     );
   }, [allRows, filters]);
 
-  // Get labels for current indication to show color pickers
-  const { labels } = useMemo(() => buildSankeyData(filteredRows, indication), [filteredRows, indication]);
+  // Get unique drug names (deduplicated across LOTs) for color pickers
+  const { labels: allLabels } = useMemo(() => buildSankeyData(filteredRows, indication), [filteredRows, indication]);
+  const labels = useMemo(() => [...new Set(allLabels)], [allLabels]);
 
   useEffect(() => {
     if (labels.length > 0) {
