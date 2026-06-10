@@ -9,16 +9,44 @@ import './App.css';
 const INDICATION_LABELS = { EC: 'Endometrial Cancer', OC: 'Ovarian Cancer', CC: 'Cervical Cancer' };
 const FONT_FAMILIES = ['Arial', 'Georgia', 'Verdana', 'Trebuchet MS', 'Courier New', 'Times New Roman'];
 
-const DEFAULT_PALETTE = [
-  '#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f',
-  '#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac',
-  '#d37295','#fabfd2','#8cd17d','#b6992d','#499894',
-];
+// Brand palette pulled from slide 10 (IHC3+ Current Usage) of the ENHERTU Gyn DE deck
+const REGIMEN_COLORS = {
+  'product x': '#EE7623',
+  'pembrolizumab + lenvatinib': '#34A355',
+  'pembrolizumab + chemotherapy': '#AED578',
+  'pembrolizumab': '#71BF88',
+  'pembrolizumab +/- bevacizumab + chemotherapy': '#0070C0',
+  'durvalumab + chemotherapy +/- olaparib': '#C55A11',
+  'cemiplimab': '#C55A11',
+  'dostarlimab + chemotherapy': '#CDE059',
+  'dostarlimab': '#A9D18E',
+  'tisotumab vedotin': '#0070C0',
+  'rucaparib': '#FFC000',
+  'niraparib': '#00B050',
+  'mirvetuximab soravtansine': '#7FB7DF',
+  'bevacizumab + chemotherapy': '#548235',
+  'olaparib +/- bevacizumab': '#002060',
+  'clinical trial': '#7F7F7F',
+};
+
+const OTHER_COLOR = '#D9D9D9'; // light gray for "Other" / unmatched regimens
+
+// Normalise for lookup: trim, collapse all whitespace (incl. non-breaking spaces), lowercase
+function normaliseRegimenName(label) {
+  return String(label).replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function colorForRegimen(label) {
+  const key = normaliseRegimenName(label);
+  if (REGIMEN_COLORS[key]) return REGIMEN_COLORS[key];
+  if (key.startsWith('chemotherapy')) return '#FFBFFF';
+  return OTHER_COLOR;
+}
 
 function assignDefaultColors(labels, existing = {}) {
   const out = { ...existing };
-  labels.forEach((label, i) => {
-    if (!out[label]) out[label] = DEFAULT_PALETTE[i % DEFAULT_PALETTE.length];
+  labels.forEach(label => {
+    if (!out[label]) out[label] = colorForRegimen(label);
   });
   return out;
 }
@@ -126,7 +154,7 @@ export default function App() {
 
   const resetColors = () => {
     const fresh = {};
-    labels.forEach((l, i) => { fresh[l] = DEFAULT_PALETTE[i % DEFAULT_PALETTE.length]; });
+    labels.forEach(l => { fresh[l] = colorForRegimen(l); });
     setNodeColors(fresh);
   };
 
