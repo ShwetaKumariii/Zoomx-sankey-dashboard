@@ -77,6 +77,8 @@ export default function App() {
   const [showLabels, setShowLabels] = useState(true);
   const [cleanMode, setCleanMode] = useState(false);
   const [nodeBorders, setNodeBorders] = useState(false);
+  const [showNodes, setShowNodes] = useState(true);
+  const [hoverValue, setHoverValue] = useState('n');
   const [flowOpacity, setFlowOpacity] = useState(0.35);
   const [nodeThickness, setNodeThickness] = useState(20);
   const [nodePadding, setNodePadding] = useState(20);
@@ -106,6 +108,22 @@ export default function App() {
     if (labels.length > 0) setNodeColors(prev => assignDefaultColors(labels, prev));
   }, [labels]);
 
+  const resetConfig = () => {
+    setChartTitle('Sankey Flow Diagram');
+    setShowLabels(true);
+    setCleanMode(false);
+    setNodeBorders(false);
+    setShowNodes(true);
+    setHoverValue('n');
+    setFlowOpacity(0.35);
+    setNodeThickness(20);
+    setNodePadding(20);
+    setLabelFontSize(12);
+    setLabelFontFamily('Arial');
+    setChartHeight(460);
+    setDefaultNodeColor('#7c6ee6');
+  };
+
   const resetColors = () => {
     const fresh = {};
     labels.forEach((l, i) => { fresh[l] = DEFAULT_PALETTE[i % DEFAULT_PALETTE.length]; });
@@ -114,7 +132,7 @@ export default function App() {
 
   const chartConfig = {
     chartTitle, showLabels, cleanMode, nodeBorders,
-    flowOpacity, nodeThickness, nodePadding,
+    showNodes, hoverValue, flowOpacity, nodeThickness, nodePadding,
     labelFontSize, labelFontFamily, chartHeight, defaultNodeColor,
   };
 
@@ -166,6 +184,14 @@ export default function App() {
 
         <div className="divider" />
 
+        {/* Filters */}
+        <div className="section">
+          <div className="section-label">🗂️ Filters</div>
+          <FilterPanel rows={allRows} filters={filters} onFilterChange={setFilters} accentColor={accentColor} />
+        </div>
+
+        <div className="divider" />
+
         {/* Chart Configuration */}
         <div className="section">
           <div className="section-label">⚙️ Chart Configuration</div>
@@ -184,11 +210,26 @@ export default function App() {
 
           <Toggle label="Show Labels" checked={showLabels} onChange={setShowLabels} />
           <Toggle label="Clean Mode" checked={cleanMode} onChange={setCleanMode} />
-          <Toggle label="Node Borders" checked={nodeBorders} onChange={setNodeBorders} />
+          <Toggle label="Show Nodes" checked={showNodes} onChange={setShowNodes} />
+
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Hover Value</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[{ val: 'n', label: 'Count (n)' }, { val: '%', label: 'Percent (%)' }].map(opt => (
+                <button key={opt.val} onClick={() => setHoverValue(opt.val)} style={{
+                  flex: 1, padding: '4px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  border: `1.5px solid ${hoverValue === opt.val ? accentColor : '#ddd'}`,
+                  borderRadius: 8,
+                  background: hoverValue === opt.val ? accentColor + '18' : '#fff',
+                  color: hoverValue === opt.val ? accentColor : '#888',
+                }}>{opt.label}</button>
+              ))}
+            </div>
+          </div>
 
           <SliderRow label="Flow Opacity" value={flowOpacity} min={0.05} max={1} step={0.05} onChange={setFlowOpacity} />
-          <SliderRow label="Node Thickness" value={nodeThickness} min={5} max={50} onChange={setNodeThickness} unit="px" />
-          <SliderRow label="Node Padding" value={nodePadding} min={5} max={60} onChange={setNodePadding} unit="px" />
+          <SliderRow label="Node Thickness" value={nodeThickness} min={1} max={50} onChange={setNodeThickness} unit="px" />
+          <SliderRow label="Node Padding" value={nodePadding} min={0} max={60} onChange={setNodePadding} unit="px" />
           <SliderRow label="Label Font Size" value={labelFontSize} min={8} max={20} onChange={setLabelFontSize} unit="px" />
           <SliderRow label="Chart Height" value={chartHeight} min={300} max={800} step={10} onChange={setChartHeight} unit="px" />
 
@@ -205,6 +246,10 @@ export default function App() {
               style={{ width: 28, height: 28, border: 'none', borderRadius: 6, cursor: 'pointer', padding: 0 }} />
             <span style={{ fontSize: 11, color: '#666' }}>Default Node Color</span>
           </div>
+
+          <button className="link-btn" onClick={resetConfig} style={{ marginTop: 8, color: '#ef4444' }}>
+            Reset to defaults
+          </button>
         </div>
 
         <div className="divider" />
@@ -233,14 +278,6 @@ export default function App() {
               {labels.map(l => <div key={l} title={l} style={{ width: 14, height: 14, borderRadius: 3, background: nodeColors[l] || defaultNodeColor }} />)}
             </div>
           )}
-        </div>
-
-        <div className="divider" />
-
-        {/* Filters */}
-        <div className="section">
-          <div className="section-label">🗂️ Filters</div>
-          <FilterPanel rows={allRows} filters={filters} onFilterChange={setFilters} accentColor={accentColor} />
         </div>
 
         <div className="divider" />

@@ -11,6 +11,9 @@
 # production
 /build
 
+# private master data (contains PII) - never commit
+/data
+
 # misc
 .DS_Store
 .env.local

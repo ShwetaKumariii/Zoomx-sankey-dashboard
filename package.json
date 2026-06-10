@@ -21,7 +21,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "predeploy": "npm run build",
+    "sanitize": "node scripts/sanitize_data.js",
+    "predeploy": "npm run sanitize && npm run build",
     "deploy": "gh-pages -d build"
   },
   "eslintConfig": {

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 const INDICATION_LABELS = { EC: 'Endometrial Cancer', OC: 'Ovarian Cancer', CC: 'Cervical Cancer' };
@@ -21,13 +21,14 @@ const SEGMENT_COLS = [
   'Segment 6', 'Segment 7', 'Segment 8', 'Segment 9', 'Segment 10',
 ];
 
-function getName(row) {
-  if (String(row['Last Name'] || '').toUpperCase() === 'M3GDPR') return 'Anonymous';
-  return `${row['First Name'] || ''} ${row['Last Name'] || ''}`.trim() || '—';
-}
-
 function formatDate(val) {
   if (!val) return '';
+  const n = Number(val);
+  if (!isNaN(n) && n > 40000) {
+    // Excel serial date → JS Date (Excel epoch offset + leap year bug)
+    const d = new Date((n - 25569) * 86400 * 1000);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
   return String(val).split(' ')[0];
 }
 
@@ -72,12 +73,21 @@ export default function UserTab({ rows, indication, accentColor = '#7c6ee6' }) {
   const [l1, l2, l3] = LOT_COLS[indication];
   const [o1, o2, o3] = OTHER_COLS[indication];
 
-  const displayRows = useMemo(() => rows, [rows]);
+  // Column search state: { LOT1: '', LOT2: '', LOT3: '', ... }
+  const [colSearch, setColSearch] = useState({});
+
+  const displayRows = useMemo(() => {
+    return rows.filter(row => {
+      if (colSearch['LOT1'] && !(row[l1] || '').toLowerCase().includes(colSearch['LOT1'].toLowerCase())) return false;
+      if (colSearch['LOT2'] && !(row[l2] || '').toLowerCase().includes(colSearch['LOT2'].toLowerCase())) return false;
+      if (colSearch['LOT3'] && !(row[l3] || '').toLowerCase().includes(colSearch['LOT3'].toLowerCase())) return false;
+      return true;
+    });
+  }, [rows, colSearch, l1, l2, l3]);
 
   function downloadExcel() {
     const data = displayRows.map(r => ({
       Id: r['Id'],
-      Name: getName(r),
       'Completion Date': formatDate(r['End Date Users Tz']),
       'Time Taken': formatTime(r['Time Taken']),
       LOT1: r[l1] || '',
@@ -134,22 +144,63 @@ export default function UserTab({ rows, indication, accentColor = '#7c6ee6' }) {
         </button>
       </div>
 
+      {/* Active search chips */}
+      {Object.entries(colSearch).some(([, v]) => v) && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+          {Object.entries(colSearch).filter(([, v]) => v).map(([col, val]) => (
+            <span key={col} style={{
+              background: accentColor + '18', color: accentColor, fontSize: 11,
+              fontWeight: 600, padding: '2px 10px', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              {col}: "{val}"
+              <span style={{ cursor: 'pointer', fontWeight: 800 }}
+                onClick={() => setColSearch(p => { const n = { ...p }; delete n[col]; return n; })}>×</span>
+            </span>
+          ))}
+          <span style={{ cursor: 'pointer', fontSize: 11, color: '#ef4444', padding: '2px 6px' }}
+            onClick={() => setColSearch({})}>Clear all</span>
+        </div>
+      )}
+
       {/* Table */}
       <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #eaecf0' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <thead>
             <tr>
-              {['Id', 'Name', 'Completion Date', 'Time Taken', 'LOT1', 'LOT2', 'LOT3',
+              {['Id', 'Completion Date', 'Time Taken', 'LOT1', 'LOT2', 'LOT3',
                 'Other A1', 'Other A2', 'Other A3', ...SEGMENT_COLS].map(h => (
                 <th key={h} style={th}>{h}</th>
               ))}
+            </tr>
+            {/* Search row */}
+            <tr style={{ background: '#f1f5f9' }}>
+              {['Id', 'Completion Date', 'Time Taken', 'LOT1', 'LOT2', 'LOT3',
+                'Other A1', 'Other A2', 'Other A3', ...SEGMENT_COLS].map(h => {
+                const searchable = ['LOT1', 'LOT2', 'LOT3'].includes(h);
+                return (
+                  <td key={h} style={{ padding: '4px 8px' }}>
+                    {searchable ? (
+                      <input
+                        type="text"
+                        placeholder="🔍"
+                        value={colSearch[h] || ''}
+                        onChange={e => setColSearch(p => ({ ...p, [h]: e.target.value }))}
+                        style={{
+                          width: '100%', padding: '3px 6px', fontSize: 11, border: `1px solid ${accentColor}55`,
+                          borderRadius: 5, outline: 'none', minWidth: 80,
+                          background: colSearch[h] ? accentColor + '12' : '#fff',
+                        }}
+                      />
+                    ) : null}
+                  </td>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
             {displayRows.map((row, i) => (
               <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
                 <td style={td}>{row['Id'] || ''}</td>
-                <td style={td}>{getName(row)}</td>
                 <td style={td}>{formatDate(row['End Date Users Tz'])}</td>
                 <td style={td}>{formatTime(row['Time Taken'])}</td>
                 <td style={td}>{row[l1] || ''}</td>
@@ -167,7 +218,7 @@ export default function UserTab({ rows, indication, accentColor = '#7c6ee6' }) {
         </table>
       </div>
       <div style={{ marginTop: 8, fontSize: 11, color: '#aaa', textAlign: 'right' }}>
-        {displayRows.length} respondents · {INDICATION_LABELS[indication]}
+        {displayRows.length}{displayRows.length !== rows.length ? ` of ${rows.length}` : ''} respondents · {INDICATION_LABELS[indication]}
       </div>
     </div>
   );
