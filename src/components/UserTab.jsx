@@ -21,6 +21,12 @@ const SEGMENT_COLS = [
   'Segment 6', 'Segment 7', 'Segment 8', 'Segment 9', 'Segment 10',
 ];
 
+const REASON_COLS = {
+  EC: 'Q6_30Z_EC',
+  OC: 'Q6_30Z_OC',
+  CC: 'Q6_30Z_CC',
+};
+
 function formatDate(val) {
   if (!val) return '';
   const n = Number(val);
@@ -72,6 +78,7 @@ function pctLOT3(rows, indication) {
 export default function UserTab({ rows, indication, accentColor = '#7c6ee6' }) {
   const [l1, l2, l3] = LOT_COLS[indication];
   const [o1, o2, o3] = OTHER_COLS[indication];
+  const reasonCol = REASON_COLS[indication];
 
   // Column search state: { LOT1: '', LOT2: '', LOT3: '', ... }
   const [colSearch, setColSearch] = useState({});
@@ -96,6 +103,7 @@ export default function UserTab({ rows, indication, accentColor = '#7c6ee6' }) {
       'Other A1': r[o1] || '',
       'Other A2': r[o2] || '',
       'Other A3': r[o3] || '',
+      'Reason for Sequencing': r[reasonCol] || '',
       ...Object.fromEntries(SEGMENT_COLS.map(s => [s, r[s] && r[s] !== 0 && r[s] !== '0' ? r[s] : ''])),
     }));
     const ws = XLSX.utils.json_to_sheet(data);
@@ -112,6 +120,10 @@ export default function UserTab({ rows, indication, accentColor = '#7c6ee6' }) {
 
   const th = { padding: '8px 12px', background: '#f8f9fb', fontWeight: 600, fontSize: 12, color: '#555', borderBottom: '2px solid #eaecf0', whiteSpace: 'nowrap', textAlign: 'left' };
   const td = { padding: '7px 12px', fontSize: 12, color: '#333', borderBottom: '1px solid #f0f1f3', whiteSpace: 'nowrap' };
+  const tdReason = {
+    padding: '7px 12px', fontSize: 12, color: '#333', borderBottom: '1px solid #f0f1f3',
+    maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default',
+  };
 
   return (
     <div style={{ padding: 20 }}>
@@ -168,14 +180,14 @@ export default function UserTab({ rows, indication, accentColor = '#7c6ee6' }) {
           <thead>
             <tr>
               {['Id', 'Completion Date', 'Time Taken', 'LOT1', 'LOT2', 'LOT3',
-                'Other A1', 'Other A2', 'Other A3', ...SEGMENT_COLS].map(h => (
+                'Other A1', 'Other A2', 'Other A3', 'Reason for Sequencing', ...SEGMENT_COLS].map(h => (
                 <th key={h} style={th}>{h}</th>
               ))}
             </tr>
             {/* Search row */}
             <tr style={{ background: '#f1f5f9' }}>
               {['Id', 'Completion Date', 'Time Taken', 'LOT1', 'LOT2', 'LOT3',
-                'Other A1', 'Other A2', 'Other A3', ...SEGMENT_COLS].map(h => {
+                'Other A1', 'Other A2', 'Other A3', 'Reason for Sequencing', ...SEGMENT_COLS].map(h => {
                 const searchable = ['LOT1', 'LOT2', 'LOT3'].includes(h);
                 return (
                   <td key={h} style={{ padding: '4px 8px' }}>
@@ -209,6 +221,7 @@ export default function UserTab({ rows, indication, accentColor = '#7c6ee6' }) {
                 <td style={td}>{row[o1] || ''}</td>
                 <td style={td}>{row[o2] || ''}</td>
                 <td style={td}>{row[o3] || ''}</td>
+                <td style={tdReason} title={row[reasonCol] || ''}>{row[reasonCol] || ''}</td>
                 {SEGMENT_COLS.map(s => (
                   <td key={s} style={td}>{row[s] && row[s] !== 0 && row[s] !== '0' ? row[s] : ''}</td>
                 ))}

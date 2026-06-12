@@ -18,6 +18,12 @@ const SEGMENT_COLUMNS = [
   'Segment 6', 'Segment 7', 'Segment 8', 'Segment 9', 'Segment 10',
 ];
 
+const REASON_COLUMNS = {
+  EC: 'Q6_30Z_EC',
+  OC: 'Q6_30Z_OC',
+  CC: 'Q6_30Z_CC',
+};
+
 function normaliseValue(val) {
   if (val === undefined || val === null || val === 0 || val === '0' || val === '') return null;
   const s = String(val).trim();
@@ -46,7 +52,7 @@ export async function loadData() {
     return out;
   });
 
-  return { rows, LOT_COLUMNS, OTHER_COLUMNS, SEGMENT_COLUMNS };
+  return { rows, LOT_COLUMNS, OTHER_COLUMNS, SEGMENT_COLUMNS, REASON_COLUMNS };
 }
 
-export { LOT_COLUMNS, OTHER_COLUMNS, SEGMENT_COLUMNS };
+export { LOT_COLUMNS, OTHER_COLUMNS, SEGMENT_COLUMNS, REASON_COLUMNS };
